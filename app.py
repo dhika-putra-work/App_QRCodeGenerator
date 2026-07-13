@@ -16,8 +16,10 @@ def create_qr_image(imei, model, qr_key):
     encoded_key = urllib.parse.quote(qr_key)
     full_url = base_url + encoded_key
 
-    # QR Content tetap menyimpan data IMEI asli
-    qr_content = f"{full_url}\n\nIMEI: {imei}\nModel: {model}"
+    # Membersihkan spasi agar URL valid dan menambah underscore sesuai permintaan
+    clean_imei = str(imei).replace(" ", "_")
+    clean_model = str(model).replace(" ", "_")
+    qr_content = f"{full_url}&info=_IMEI_{clean_imei}_Model_{clean_model}"
 
     qr = qrcode.QRCode(
         version=None, 
@@ -42,7 +44,6 @@ def create_qr_image(imei, model, qr_key):
     except:
         font = ImageFont.load_default()
 
-    # Logika Tampilan: Ambil hanya sebelum "/"
     display_imei = str(imei).split('/')[0]
     
     bbox_imei = draw.textbbox((0, 0), display_imei, font=font)
