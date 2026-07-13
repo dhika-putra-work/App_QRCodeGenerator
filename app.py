@@ -62,7 +62,7 @@ def create_qr_image(imei, model, qr_key):
 st.title("📱 QR Code Generator")
 
 password = st.text_input("Enter Password", type="password")
-if password == "!doc-rmn3":
+if password == st.secrets["APP_PASSWORD"]:
     mode = st.radio("Select Mode:", ["Manual Input", "Bulk Upload"])
 
     if mode == "Manual Input":
