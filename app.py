@@ -11,20 +11,11 @@ import urllib.parse
 
 # Function to generate QR Code
 def create_qr_image(imei, model, qr_key):
-    # Base URL sesuai permintaan
     base_url = "https://apps.powerapps.com/play/6ca13b56-1edc-49f5-980a-e6a5627f2885?key="
-    
-    # Mengambil hanya angka IMEI1 (sebelum tanda /)
     imei1_only = str(imei).split('/')[0]
     full_url = base_url + urllib.parse.quote(imei1_only)
     
-    qr = qrcode.QRCode(
-        version=None, 
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=5, 
-        border=2 
-    )
-    
+    qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=5, border=2)
     qr.add_data(full_url)
     qr.make(fit=True)
     
@@ -32,7 +23,14 @@ def create_qr_image(imei, model, qr_key):
     qr_img = ImageOps.expand(qr_img, border=2, fill='white')
     
     qr_w, qr_h = qr_img.size
-    final_img = Image.new("RGB", (qr_w, qr_h + 42), "white")
+    
+    # Cek apakah ada dua IMEI
+    imei_list = str(imei).split('/')
+    has_two_imei = len(imei_list) > 1
+    
+    # Menentukan tinggi canvas (lebih kecil/dempet)
+    extra_height = 55 if has_two_imei else 40
+    final_img = Image.new("RGB", (qr_w, qr_h + extra_height), "white")
     final_img.paste(qr_img, (0, 0))
     
     draw = ImageDraw.Draw(final_img)
@@ -41,16 +39,16 @@ def create_qr_image(imei, model, qr_key):
     except:
         font = ImageFont.load_default()
         
-    # Tetap menampilkan imei lengkap (input asli) di bawah QR
-    display_imei = str(imei) 
-    bbox_imei = draw.textbbox((0, 0), display_imei, font=font)
-    bbox_model = draw.textbbox((0, 0), str(model), font=font)
-    
-    x_imei = (qr_w - (bbox_imei[2] - bbox_imei[0])) / 2
-    x_model = (qr_w - (bbox_model[2] - bbox_model[0])) / 2
-    
-    draw.text((x_imei, qr_h + 5), display_imei, fill="black", font=font)
-    draw.text((x_model, qr_h + 25), str(model), fill="black", font=font)
+    # Penempatan teks yang lebih dempet
+    if has_two_imei:
+        # Label: IMEI1, IMEI2, Model
+        draw.text((5, qr_h + 2), f"IMEI1: {imei_list[0]}", fill="black", font=font)
+        draw.text((5, qr_h + 18), f"IMEI2: {imei_list[1]}", fill="black", font=font)
+        draw.text((5, qr_h + 34), f"Model: {model}", fill="black", font=font)
+    else:
+        # Label: IMEI1, Model
+        draw.text((5, qr_h + 2), f"IMEI1: {imei}", fill="black", font=font)
+        draw.text((5, qr_h + 18), f"Model: {model}", fill="black", font=font)
     
     buf = io.BytesIO()
     final_img.save(buf, format="PNG")
@@ -67,18 +65,14 @@ if password == st.secrets.get("APP_PASSWORD"):
         imei = st.text_input("IMEI Number", placeholder="Example: 123456789012345 or 12345/67890")
         model = st.text_input("Device Model")
         
-        # Auto-generate QR_Key based on IMEI
-        qr_key = ""
-        if imei:
-            qr_key = str(imei).split('/')[0]
-        
+        qr_key = str(imei).split('/')[0] if imei else ""
         st.text_input("QR_Key (Auto-generated)", value=qr_key, disabled=True)
         
         if st.button("Generate"):
             if imei and model:
                 img_data = create_qr_image(imei, model, qr_key)
                 st.image(img_data)
-                st.download_button("Download", img_data, f"{imei.split('/')[0]}.png", "image/png")
+                st.download_button("Download", img_data, f"{qr_key}.png", "image/png")
             else:
                 st.error("Please fill all required fields!")
     
@@ -106,8 +100,7 @@ if password == st.secrets.get("APP_PASSWORD"):
                     pdf_buffer = io.BytesIO()
                     c = canvas.Canvas(pdf_buffer, pagesize=A4)
                     width, height = A4
-                    # Ukuran baru: 92x101
-                    qr_w, qr_h = 92, 101 
+                    qr_w, qr_h = 100, 120 
                     x_margin, y_margin = 30, 30
                     x, y = x_margin, height - y_margin - qr_h
                     
