@@ -7,16 +7,12 @@ import zipfile
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
-import urllib.parse
 
 # --- FUNCTION ---
-def create_qr_image(imei, model, raw_key):
-    # Membersihkan key: ambil angka saja jika ada prefix seperti 'IMEI1:'
-    clean_key = str(raw_key).split(':')[-1]
-    
-    # URL Base sesuai permintaan (tanpa shortener)
+def create_qr_image(imei_input, model, qr_key):
+    # Base URL
     base_url = "https://apps.powerapps.com/play/6ca13b56-1edc-49f5-980a-e6a5627f2885?key="
-    qr_content = f"{base_url}{clean_key}"
+    qr_content = f"{base_url}{qr_key}"
     
     # Generate QR
     qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=5, border=2)
@@ -26,7 +22,7 @@ def create_qr_image(imei, model, raw_key):
     qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
     qr_img = ImageOps.expand(qr_img, border=2, fill='white')
     
-    # Add Text
+    # Add Text (Rata Tengah)
     qr_w, qr_h = qr_img.size
     final_img = Image.new("RGB", (qr_w, qr_h + 50), "white")
     final_img.paste(qr_img, (0, 0))
@@ -34,9 +30,17 @@ def create_qr_image(imei, model, raw_key):
     draw = ImageDraw.Draw(final_img)
     font = ImageFont.load_default()
     
-    display_imei = str(imei).split('/')[0]
-    draw.text((10, qr_h + 5), f"IMEI: {display_imei}", fill="black", font=font)
-    draw.text((10, qr_h + 25), f"Model: {model}", fill="black", font=font)
+    # Helper untuk teks rata tengah
+    def get_text_width(text, font):
+        return draw.textbbox((0, 0), text, font=font)[2]
+
+    # Baris 1: IMEI
+    w1 = get_text_width(imei_input, font)
+    draw.text(((qr_w - w1) / 2, qr_h + 5), imei_input, fill="black", font=font)
+    
+    # Baris 2: Model
+    w2 = get_text_width(model, font)
+    draw.text(((qr_w - w2) / 2, qr_h + 25), model, fill="black", font=font)
     
     buf = io.BytesIO()
     final_img.save(buf, format="PNG")
@@ -53,15 +57,18 @@ if password == app_password:
     mode = st.radio("Select Mode:", ["Manual Input", "Bulk Upload"])
 
     if mode == "Manual Input":
-        imei = st.text_input("IMEI Number")
+        imei_input = st.text_input("IMEI Number (e.g. 3533... or 3533.../3533...)")
         model = st.text_input("Device Model")
-        qr_key = st.text_input("QR_Key", value=imei)
+        
+        # Logika otomatis ambil IMEI pertama untuk QR_Key
+        qr_key = imei_input.split('/')[0] if imei_input else ""
+        st.write(f"QR Key (Auto-generated): **{qr_key}**")
         
         if st.button("Generate"):
-            if imei and model and qr_key:
-                img_data = create_qr_image(imei, model, qr_key)
+            if imei_input and model:
+                img_data = create_qr_image(imei_input, model, qr_key)
                 st.image(img_data)
-                st.download_button("Download", img_data, f"{imei.split('/')[0]}.png", "image/png")
+                st.download_button("Download", img_data, f"{qr_key}.png", "image/png")
             else:
                 st.error("Please fill all columns!")
 
@@ -72,7 +79,8 @@ if password == app_password:
             df.columns = df.columns.str.strip().str.lower()
             
             if 'imei' in df.columns and 'model' in df.columns:
-                if 'qr_key' not in df.columns: df['qr_key'] = df['imei']
+                # Pastikan qr_key diambil dari IMEI pertama
+                df['qr_key'] = df['imei'].astype(str).apply(lambda x: x.split('/')[0])
                 
                 col1, col2 = st.columns(2)
                 with col1:
@@ -80,8 +88,8 @@ if password == app_password:
                         zip_buffer = io.BytesIO()
                         with zipfile.ZipFile(zip_buffer, "w") as zf:
                             for _, row in df.iterrows():
-                                img = create_qr_image(row['imei'], row['model'], row['qr_key'])
-                                zf.writestr(f"{str(row['imei']).split('/')[0]}.png", img)
+                                img = create_qr_image(str(row['imei']), str(row['model']), row['qr_key'])
+                                zf.writestr(f"{row['qr_key']}.png", img)
                         st.download_button("Download ZIP", zip_buffer.getvalue(), "qr_codes.zip", "application/zip")
                 
                 with col2:
@@ -90,7 +98,7 @@ if password == app_password:
                         c = canvas.Canvas(pdf_buffer, pagesize=A4)
                         x, y = 30, 750
                         for _, row in df.iterrows():
-                            img = create_qr_image(row['imei'], row['model'], row['qr_key'])
+                            img = create_qr_image(str(row['imei']), str(row['model']), row['qr_key'])
                             c.drawImage(ImageReader(io.BytesIO(img)), x, y, width=100, height=110)
                             x += 120
                             if x > 500: x = 30; y -= 130
