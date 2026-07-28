@@ -43,7 +43,6 @@ def create_qr_image(imei, model, qr_key):
     except:
         font = ImageFont.load_default()
         
-    # Tetap menampilkan imei lengkap (input asli) di bawah QR
     display_imei = str(imei) 
     bbox_imei = draw.textbbox((0, 0), display_imei, font=font)
     bbox_model = draw.textbbox((0, 0), str(model), font=font)
@@ -69,7 +68,6 @@ if password == st.secrets.get("APP_PASSWORD"):
         imei = st.text_input("IMEI Number", placeholder="Example: 123456789012345 or 12345/67890")
         model = st.text_input("Device Model")
         
-        # Auto-generate QR_Key based on IMEI (Taking only the first IMEI)
         qr_key = ""
         if imei:
             qr_key = f"IMEI1:{str(imei).split('/')[0]}"
@@ -111,7 +109,8 @@ if password == st.secrets.get("APP_PASSWORD"):
                     pdf_buffer = io.BytesIO()
                     c = canvas.Canvas(pdf_buffer, pagesize=A4)
                     width, height = A4
-                    qr_w, qr_h = 78, 87 
+                    # Ukuran baru: 92x101 (tambah 0.5cm dari 78x87)
+                    qr_w, qr_h = 92, 101 
                     x_margin, y_margin = 30, 30
                     x, y = x_margin, height - y_margin - qr_h
                     
