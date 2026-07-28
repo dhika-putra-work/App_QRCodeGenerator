@@ -15,7 +15,7 @@ def create_qr_image(imei_input, model, qr_key):
     qr_content = f"{base_url}{qr_key}"
     
     # Generate QR
-    qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=5, border=2)
+    qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=5, border=2)
     qr.add_data(qr_content)
     qr.make(fit=True)
     
