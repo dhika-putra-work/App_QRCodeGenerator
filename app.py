@@ -8,31 +8,19 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 import urllib.parse
-import requests
 
-# --- CONFIG & CACHE ---
-@st.cache_data
-def shorten_url(url):
-    try:
-        api_url = f"https://tinyurl.com/api-create.php?url={urllib.parse.quote(url)}"
-        response = requests.get(api_url, timeout=5)
-        return response.text if response.status_code == 200 else url
-    except:
-        return url
-
+# --- FUNCTION ---
 def create_qr_image(imei, model, raw_key):
     # Membersihkan key: ambil angka saja jika ada prefix seperti 'IMEI1:'
     clean_key = str(raw_key).split(':')[-1]
     
-    # URL baru sesuai permintaan
+    # URL Base sesuai permintaan (tanpa shortener)
     base_url = "https://apps.powerapps.com/play/6ca13b56-1edc-49f5-980a-e6a5627f2885?key="
-    full_url = f"{base_url}{clean_key}&info=_IMEI_{str(imei).replace(' ', '_')}_Model_{str(model).replace(' ', '_')}"
+    qr_content = f"{base_url}{clean_key}"
     
-    short_url = shorten_url(full_url)
-
     # Generate QR
     qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=5, border=2)
-    qr.add_data(short_url)
+    qr.add_data(qr_content)
     qr.make(fit=True)
     
     qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
@@ -67,7 +55,7 @@ if password == app_password:
     if mode == "Manual Input":
         imei = st.text_input("IMEI Number")
         model = st.text_input("Device Model")
-        qr_key = st.text_input("QR_Key (e.g. 004401116782281)", value=imei)
+        qr_key = st.text_input("QR_Key", value=imei)
         
         if st.button("Generate"):
             if imei and model and qr_key:
