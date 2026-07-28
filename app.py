@@ -15,12 +15,11 @@ def create_qr_image(imei, model, qr_key):
     
     encoded_key = urllib.parse.quote(qr_key)
     full_url = base_url + encoded_key
-
-    # Membersihkan spasi agar URL valid dan menambah underscore sesuai permintaan
+    
     clean_imei = str(imei).replace(" ", "_")
     clean_model = str(model).replace(" ", "_")
     qr_content = f"{full_url}&info=_IMEI_{clean_imei}_Model_{clean_model}"
-
+    
     qr = qrcode.QRCode(
         version=None, 
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -43,9 +42,8 @@ def create_qr_image(imei, model, qr_key):
         font = ImageFont.truetype("arial.ttf", 14)
     except:
         font = ImageFont.load_default()
-
+        
     display_imei = str(imei).split('/')[0]
-    
     bbox_imei = draw.textbbox((0, 0), display_imei, font=font)
     bbox_model = draw.textbbox((0, 0), str(model), font=font)
     
@@ -61,23 +59,29 @@ def create_qr_image(imei, model, qr_key):
 
 # --- STREAMLIT UI ---
 st.title("📱 QR Code Generator")
-
 password = st.text_input("Enter Password", type="password")
-if password == st.secrets["APP_PASSWORD"]:
-    mode = st.radio("Select Mode:", ["Manual Input", "Bulk Upload"])
 
+if password == st.secrets.get("APP_PASSWORD"):
+    mode = st.radio("Select Mode:", ["Manual Input", "Bulk Upload"])
+    
     if mode == "Manual Input":
-        imei = st.text_input("IMEI Number")
+        imei = st.text_input("IMEI Number", placeholder="Contoh: 123456789012345 atau 12345/67890")
         model = st.text_input("Device Model")
-        qr_key = st.text_input("QR_Key (e.g., IMEI1:004401116782281)")
+        
+        # Auto-generate QR_Key based on IMEI
+        qr_key = ""
+        if imei:
+            qr_key = f"IMEI1:{str(imei).split('/')[0]}"
+        
+        st.text_input("QR_Key (Auto-generated)", value=qr_key, disabled=True)
         
         if st.button("Generate"):
-            if imei and model and qr_key:
+            if imei and model:
                 img_data = create_qr_image(imei, model, qr_key)
                 st.image(img_data)
                 st.download_button("Download", img_data, f"{imei.split('/')[0]}.png", "image/png")
             else:
-                st.error("Please fill all columns!")
+                st.error("Please fill IMEI and Model columns!")
     
     else:
         uploaded_file = st.file_uploader("Upload Excel/CSV", type=["csv", "xlsx"])
@@ -90,8 +94,8 @@ if password == st.secrets["APP_PASSWORD"]:
                 st.stop()
             
             if 'qr_key' not in df.columns:
-                df['qr_key'] = 'IMEI1:' + df['imei'].astype(str)
-
+                df['qr_key'] = 'IMEI1:' + df['imei'].astype(str).str.split('/').str[0]
+                
             col1, col2 = st.columns(2)
             with col1:
                 if st.button("Generate ZIP"):
@@ -101,13 +105,12 @@ if password == st.secrets["APP_PASSWORD"]:
                             img_bytes = create_qr_image(str(row['imei']), str(row['model']), str(row['qr_key']))
                             zip_file.writestr(f"{str(row['imei']).split('/')[0]}.png", img_bytes)
                     st.download_button("Download ZIP", zip_buffer.getvalue(), "qr_codes.zip", "application/zip")
-
             with col2:
                 if st.button("Generate PDF for Print"):
                     pdf_buffer = io.BytesIO()
                     c = canvas.Canvas(pdf_buffer, pagesize=A4)
                     width, height = A4
-                    qr_w, qr_h = 78, 87 # Ukuran dalam points (4cm x 4.4cm)
+                    qr_w, qr_h = 78, 87 
                     x_margin, y_margin = 30, 30
                     x, y = x_margin, height - y_margin - qr_h
                     
@@ -124,4 +127,5 @@ if password == st.secrets["APP_PASSWORD"]:
                     c.save()
                     st.download_button("Download PDF", pdf_buffer.getvalue(), "qr_codes.pdf", "application/pdf")
 else:
-    st.warning("Please enter the correct password to access the tool.")
+    if password:
+        st.warning("Please enter the correct password to access the tool.")
