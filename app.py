@@ -28,27 +28,31 @@ def create_qr_image(imei, model, qr_key):
     imei_list = str(imei).split('/')
     has_two_imei = len(imei_list) > 1
     
-    # Menentukan tinggi canvas (lebih kecil/dempet)
-    extra_height = 55 if has_two_imei else 40
+    # Tinggi canvas disesuaikan agar lebih rapat
+    extra_height = 45 if has_two_imei else 30
     final_img = Image.new("RGB", (qr_w, qr_h + extra_height), "white")
     final_img.paste(qr_img, (0, 0))
     
     draw = ImageDraw.Draw(final_img)
     try:
-        font = ImageFont.truetype("arial.ttf", 14)
+        font = ImageFont.truetype("arial.ttf", 12)
     except:
         font = ImageFont.load_default()
         
-    # Penempatan teks yang lebih dempet
+    # Fungsi pembantu untuk text rata tengah
+    def draw_centered_text(text, y_pos):
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_w = bbox[2] - bbox[0]
+        draw.text(((qr_w - text_w) / 2, y_pos), text, fill="black", font=font)
+
+    # Penempatan teks yang lebih rapat ke QR (qr_h - 2)
     if has_two_imei:
-        # Label: IMEI1, IMEI2, Model
-        draw.text((5, qr_h + 2), f"IMEI1: {imei_list[0]}", fill="black", font=font)
-        draw.text((5, qr_h + 18), f"IMEI2: {imei_list[1]}", fill="black", font=font)
-        draw.text((5, qr_h + 34), f"Model: {model}", fill="black", font=font)
+        draw_centered_text(f"IMEI1: {imei_list[0]}", qr_h - 2)
+        draw_centered_text(f"IMEI2: {imei_list[1]}", qr_h + 12)
+        draw_centered_text(f"Model: {model}", qr_h + 26)
     else:
-        # Label: IMEI1, Model
-        draw.text((5, qr_h + 2), f"IMEI1: {imei}", fill="black", font=font)
-        draw.text((5, qr_h + 18), f"Model: {model}", fill="black", font=font)
+        draw_centered_text(f"IMEI1: {imei}", qr_h - 2)
+        draw_centered_text(f"Model: {model}", qr_h + 12)
     
     buf = io.BytesIO()
     final_img.save(buf, format="PNG")
