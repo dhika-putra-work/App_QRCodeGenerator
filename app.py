@@ -13,7 +13,7 @@ def create_qr_image(imei_input, model, qr_key):
     base_url = "https://apps.powerapps.com/play/6ca13b56-1edc-49f5-980a-e6a5627f2885?key="
     qr_content = f"{base_url}{qr_key}"
 
-    # box_size 6 membuat QR sedikit lebih besar dari sebelumnya (5)
+    # box_size 6 untuk memperbesar ukuran QR
     qr = qrcode.QRCode(version=None, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=6, border=2)
     qr.add_data(qr_content)
     qr.make(fit=True)
@@ -22,7 +22,6 @@ def create_qr_image(imei_input, model, qr_key):
     qr_img = ImageOps.expand(qr_img, border=2, fill='white')
 
     qr_w, qr_h = qr_img.size
-    # Menambah tinggi canvas untuk memberi ruang label yang lebih jelas
     final_img = Image.new("RGB", (qr_w, qr_h + 50), "white")
     final_img.paste(qr_img, (0, 0))
 
@@ -85,14 +84,14 @@ if password == app_password:
                     if st.button("Generate PDF"):
                         pdf_buffer = io.BytesIO()
                         c = canvas.Canvas(pdf_buffer, pagesize=A4)
-                        # Koordinat disesuaikan agar QR yang lebih besar tidak terpotong
-                        x, y = 40, 720 
+                        # Diturunkan 1cm (dari 720 ke 692) agar tidak mepet atas
+                        x, y = 40, 692 
                         for _, row in df.iterrows():
                             img = create_qr_image(str(row['imei']), str(row['model']), row['qr_key'])
                             c.drawImage(ImageReader(io.BytesIO(img)), x, y, width=115, height=125)
                             x += 130
                             if x > 450: x = 40; y -= 140
-                            if y < 100: c.showPage(); y = 720
+                            if y < 100: c.showPage(); y = 692
                         c.save()
                         st.download_button("Download PDF", pdf_buffer.getvalue(), "qr_codes.pdf", "application/pdf")
             else:
