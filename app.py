@@ -43,7 +43,8 @@ def create_qr_image(imei, model, qr_key):
     except:
         font = ImageFont.load_default()
         
-    display_imei = str(imei).split('/')[0]
+    # Tetap menampilkan imei lengkap (input asli) di bawah QR
+    display_imei = str(imei) 
     bbox_imei = draw.textbbox((0, 0), display_imei, font=font)
     bbox_model = draw.textbbox((0, 0), str(model), font=font)
     
@@ -65,10 +66,10 @@ if password == st.secrets.get("APP_PASSWORD"):
     mode = st.radio("Select Mode:", ["Manual Input", "Bulk Upload"])
     
     if mode == "Manual Input":
-        imei = st.text_input("IMEI Number", placeholder="Contoh: 123456789012345 atau 12345/67890")
+        imei = st.text_input("IMEI Number", placeholder="Example: 123456789012345 or 12345/67890")
         model = st.text_input("Device Model")
         
-        # Auto-generate QR_Key based on IMEI
+        # Auto-generate QR_Key based on IMEI (Taking only the first IMEI)
         qr_key = ""
         if imei:
             qr_key = f"IMEI1:{str(imei).split('/')[0]}"
@@ -81,7 +82,7 @@ if password == st.secrets.get("APP_PASSWORD"):
                 st.image(img_data)
                 st.download_button("Download", img_data, f"{imei.split('/')[0]}.png", "image/png")
             else:
-                st.error("Please fill IMEI and Model columns!")
+                st.error("Please fill all required fields!")
     
     else:
         uploaded_file = st.file_uploader("Upload Excel/CSV", type=["csv", "xlsx"])
@@ -128,4 +129,4 @@ if password == st.secrets.get("APP_PASSWORD"):
                     st.download_button("Download PDF", pdf_buffer.getvalue(), "qr_codes.pdf", "application/pdf")
 else:
     if password:
-        st.warning("Please enter the correct password to access the tool.")
+        st.warning("Incorrect password. Please try again.")
